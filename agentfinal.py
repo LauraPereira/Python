@@ -2,6 +2,11 @@ import requests, json, psutil, platform,time;
 url="http://192.168.3.26:5000/api"
 
 while(1):
+
+    #Récupération load average 1min
+    un, cinq, quinze = psutil.getloadavg()
+    print(un)
+
     #Récupération de l'OS
     systeme = platform.system()
     
