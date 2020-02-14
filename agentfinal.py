@@ -1,30 +1,88 @@
-import requests, json, psutil, platform,time,os,sys
+import requests, json, psutil, platform,time,os,sys,socket
+systeme = platform.system()
 
-url="http://192.168.3.26:5000/api"
 
-a = [p.name() for p in psutil.process_iter(attrs=['name'])]
-if 'az' in a :
-    print ("gg")
-    
+IP=socket.gethostbyname(socket.gethostname())
+#recuperation de l'url dans le fichier init.conf
 try:
-    with open('/home/rt/test/test.txt','r'): 
-        while(1):
-            #Récupération de l'OS
-            systeme = platform.system()
+    if systeme == 'Windows' :
+        with open('D:\python\init.conf','r') as fichier:  
+            contenu = fichier.read()
+            contenu = json.loads(contenu)
+            url=contenu["url"]
+    elif systeme == 'Linux' :
+        with open('/home/rt/test/init.conf'):
+            contenu = fichier.read()
+            contenu = json.loads(contenu)
+            url=contenu["url"]        
+except:
+    print("fichier init.conf n'existe pas ce referé a l'administrateur")    
+    
+if systeme == 'Windows' :
+    if os.path.isfile('D:\python\service.conf'):
+        with open('D:\python\service.conf','r')as f:
+            service=f.read()
+            service=json.loads(service)
+    else :     
+        try :
+            nomaip = platform.node()+"@"+IP
+            Jinit={"nom": nomaip,"os": systeme}
+            reqinit=json.dumps(Jinit)
+            urlinit= url+"/init"
+            
+            r = requests.post(urlinit,reqinit)
+            contenuservice = r.json()
+            with open('D:\python\service.conf','w') as f:
+                f.write(json.dumps(contenuservice))     
+        except:
+            print(sys.exc_info()[0])
+            #sys.exit()
+            #ae
+            pass
+                           
+elif systeme == 'Linux' :
+    if os.path.isfile('/home/rt/test/service.conf'):
+        with open('/home/rt/test/service.conf','r')as f:
+            service=f.read()
+            service=json.loads(service)
+    else :
+        try :
+            Jinit={"nom": platform.node()+"@"+IP,"os": systeme}
+            reqinit=json.dumps(Jinit)
+            r = requests.post(url+"/init",reqinit)
+            with open('/home/rt/test/service.conf','w') as f:
+                f.write(r.json())     
+        except :
+            print('serveur injoignable')
+            sys.exit()
+else :
+    print('system non gérée')
 
-            #Récupération de l'hote
-            nomHost = platform.node()+"@192.168.2.25"
+    
+#recherche d'un service
+a = [p.name() for p in psutil.process_iter(attrs=['name'])]
+if 'cmd.exe' in a :
+    print ("gg")
+else:
+    print(a)
 
-            #Récupération de noyau
-            version = platform.release()
+try:
+    while(1):
+        #Récupération de l'hote
+        nomHost = platform.node()+IP
 
-            #Récupération du type cpu
-            cpu = platform.processor()
+        #Récupération de noyau
+        version = platform.release()
 
-            #Récupération de la fréquence cpu
-            cpuFre = psutil.cpu_freq().current
-            cpuMax = psutil.cpu_freq().max
+        #Récupération du type cpu
+        cpu = platform.processor()
 
+        #Récupération de la fréquence cpu
+        cpuFre = psutil.cpu_freq().current
+        cpuMax = psutil.cpu_freq().max
+        if systeme == 'Windows' :
+            uptime = "pas de valeur"
+        elif systeme == 'Linux' :
             # calculate the uptime
             uptime_file = open('/proc/uptime')
             uptime = uptime_file.readline().split()[0]
@@ -35,59 +93,49 @@ try:
             (days,hours) = divmod(uptime,24)
             uptime = 'up %d jour%s, %d:%02d' % (days, days != 1 and 's' or '', hours, mins)
 
-            tabDisk = []
-            listdisk = psutil.disk_partitions()
-            for disk in listdisk:
-                if (disk.fstype != 'squashfs'):
-                    detaildisk = psutil.disk_usage(disk.mountpoint)
-                    tabDisk.append({'fileSystem':disk.device,'size':detaildisk.total,'used':detaildisk.used,'available':detaildisk.free,'pourcentage':detaildisk.percent,'mounted':disk.mountpoint})
+        tabDisk = []
+        listdisk = psutil.disk_partitions()
+        for disk in listdisk:
+            if (disk.fstype != 'squashfs'):
+                detaildisk = psutil.disk_usage(disk.mountpoint)
+                tabDisk.append({'fileSystem':disk.device,'size':detaildisk.total,'used':detaildisk.used,'available':detaildisk.free,'pourcentage':detaildisk.percent,'mounted':disk.mountpoint})
+        with open('/home/rt/test/test.txt','a')as f:
+            service=f.read()
+            service=json.loads(service)
 
-            with open('/home/rt/test/test.txt','r')as f:
-                service=f.read()
-                service=json.loads(service)
+        #Mémoire utilisé
+        memoireused = psutil.virtual_memory().used
 
-            #Mémoire utilisé
-            memoireused = psutil.virtual_memory().used
+        #Mémoire free
+        memoirefree = psutil.virtual_memory().free
 
-            #Mémoire free
-            memoirefree = psutil.virtual_memory().free
+        #Mémoire buffers
+        memoirebuffers = psutil.virtual_memory().buffers
 
+        #Mémoire cached
+        memoirecached = psutil.virtual_memory().cached
 
-            #Mémoire buffers
-            memoirebuffers = psutil.virtual_memory().buffers
+        service["id"]=14603
+        service["os"]= systeme
+        service["nomhost"]= nomHost
+        service["noyau"]= version
+        service["cputype"]= cpu
+        service["cpufrequence"]= cpuFre
+        service["uptime"]=uptime
+        service["metrique"]=tabDisk
+        service["moccupe"]=memoireused
+        service["mlibre"]=memoirefree
+        service["mbuffer"]=memoirebuffers
+        service["mcached"]=memoirecached
+        service["total"]=memoireused+memoirefree+memoirebuffers+memoirecached
+        service["cpufrequencemax"]=cpuMax
+        print(service)
 
-
-            #Mémoire cached
-            memoirecached = psutil.virtual_memory().cached
-
-            service["id"]=14603
-            service["os"]= systeme
-            service["nomhost"]= nomHost
-            service["noyau"]= version
-            service["cputype"]= cpu
-            service["cpufrequence"]= cpuFre
-            service["uptime"]=uptime
-            service["metrique"]=tabDisk
-            service["moccupe"]=memoireused
-            service["mlibre"]=memoirefree
-            service["mbuffer"]=memoirebuffers
-            service["mcached"]=memoirecached
-            service["total"]=memoireused+memoirefree+memoirebuffers+memoirecached
-            service["cpufrequencemax"]=cpuMax
-            print(service)
-
-            donnees = json.dumps(service)
-            try:
-                r = requests.post(url, data=donnees)
-            except:
-                pass
-            time.sleep(60)
+        donnees = json.dumps(service)
+        try:
+            r = requests.post(url, data=donnees)
+        except:
+            pass
+        time.sleep(10)
 except IOError:
-    nom = platform.node()+"@192.168.2.25"
-    urlconfig = "http://192.168.3.26:5000/api/init"
-    r = requests.post(urlconfig,nom)
-    #reponse = requests.get(urlconfig)
-    print(r.json())
-    print("erreur")
-
-
+    print(IOError)
