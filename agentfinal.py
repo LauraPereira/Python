@@ -3,24 +3,26 @@ systeme = platform.system()
 
 
 IP=socket.gethostbyname(socket.gethostname())
+chemin = os.getcwd()+"\\init.conf"
 #recuperation de l'url dans le fichier init.conf
 try:
     if systeme == 'Windows' :
-        with open('D:\python\init.conf','r') as fichier:  
+        with open(chemin,'r') as fichier:  
             contenu = fichier.read()
             contenu = json.loads(contenu)
             url=contenu["url"]
     elif systeme == 'Linux' :
-        with open('/home/rt/test/init.conf'):
+        with open(chemin):
             contenu = fichier.read()
             contenu = json.loads(contenu)
             url=contenu["url"]        
 except:
-    print("fichier init.conf n'existe pas ce referé a l'administrateur")    
+    print("fichier init.conf n'existe pas ce referé a l'administrateur")
     
+chemin = os.getcwd()+"\\service.conf"    
 if systeme == 'Windows' :
-    if os.path.isfile('D:\python\service.conf'):
-        with open('D:\python\service.conf','r')as f:
+    if os.path.isfile(chemin):
+        with open(chemin,'r')as f:
             service=f.read()
             service=json.loads(service)
     else :     
@@ -32,7 +34,7 @@ if systeme == 'Windows' :
             
             r = requests.post(urlinit,reqinit)
             contenuservice = r.json()
-            with open('D:\python\service.conf','w') as f:
+            with open(chemin,'w') as f:
                 f.write(json.dumps(contenuservice))     
         except:
             print(sys.exc_info()[0])
@@ -41,8 +43,8 @@ if systeme == 'Windows' :
             pass
                            
 elif systeme == 'Linux' :
-    if os.path.isfile('/home/rt/test/service.conf'):
-        with open('/home/rt/test/service.conf','r')as f:
+    if os.path.isfile(chemin):
+        with open(chemin,'r')as f:
             service=f.read()
             service=json.loads(service)
     else :
@@ -50,7 +52,7 @@ elif systeme == 'Linux' :
             Jinit={"nom": platform.node()+"@"+IP,"os": systeme}
             reqinit=json.dumps(Jinit)
             r = requests.post(url+"/init",reqinit)
-            with open('/home/rt/test/service.conf','w') as f:
+            with open(chemin,'w') as f:
                 f.write(r.json())     
         except :
             print('serveur injoignable')
